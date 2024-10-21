@@ -180,7 +180,7 @@ public class UserServiceTest {
     public void testCreateUser_InvalidHttpMethod() throws IOException {
         logger.info("Running Scenario: Invalid HTTP method");
 
-        // Implement a GET request or other invalid method to `/users` endpoint
+        // Implement a GET/TRACE/PATCH request or other invalid method to `/users` endpoint
         ApiResponse response = userService.sendInvalidMethodRequest();
         assertEquals(405, response.getStatusCode(), "Expected status code 405 for invalid HTTP method");
     }
