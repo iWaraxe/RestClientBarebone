@@ -134,4 +134,18 @@ public class OAuth2Client {
             });
         }
     }
+
+    // Method to invalidate tokens
+    public void invalidateTokens() {
+        this.readToken = null;
+        this.writeToken = null;
+        logger.info("Tokens have been invalidated");
+    }
+
+    // Method to set invalid token
+    public void setInvalidToken() {
+        this.readToken = "invalid_token";
+        this.writeToken = "invalid_token";
+        logger.info("Tokens have been set to invalid");
+    }
 }

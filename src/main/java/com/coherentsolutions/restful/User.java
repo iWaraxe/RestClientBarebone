@@ -10,5 +10,6 @@ public class User {
     private String name;
     private String email;
     private String sex;
-    private String zipCode; // Keep as String to send the zip code code
+    private String zipCode;// Keep as String to send the zipcode code
+    private int age;
 }

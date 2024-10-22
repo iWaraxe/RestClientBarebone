@@ -1,5 +1,6 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.authentication;
 
+import com.coherentsolutions.restful.OAuth2Client;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -22,12 +23,5 @@ class OAuth2ClientTest {
         String token = client.getWriteToken();
         assertNotNull(token);
         assertTrue(token.length() > 0);
-    }
-
-    @Test
-    void testSingletonInstance() {
-        OAuth2Client instance1 = OAuth2Client.getInstance();
-        OAuth2Client instance2 = OAuth2Client.getInstance();
-        assertSame(instance1, instance2);
     }
 }

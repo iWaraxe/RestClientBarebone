@@ -1,5 +1,9 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.UserEndpoints;
 
+import com.coherentsolutions.restful.ApiResponse;
+import com.coherentsolutions.restful.OAuth2Client;
+import com.coherentsolutions.restful.User;
+import com.coherentsolutions.restful.UserService;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,16 +14,16 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UserServiceTest {
+public class PostUsersTests {
 
-    private static final Logger logger = LoggerFactory.getLogger(UserServiceTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(PostUsersTests.class);
     private UserService userService;
     private OAuth2Client client;
 
     @BeforeEach
     void setUp() throws IOException {
-        userService = new UserService();
         client = OAuth2Client.getInstance();
+        userService = new UserService(client);
 
         // Reset zip codes to known state before each test
         client.resetZipCodes(Arrays.asList("10001", "20002", "30003"));

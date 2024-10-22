@@ -1,5 +1,6 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.ZipCodeEndpoints;
 
+import com.coherentsolutions.restful.OAuth2Client;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -10,9 +11,9 @@ import java.util.Arrays;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
-class OAuth2ClientZipCodeTest {
+class ZipCodeTests {
 
-    private static final Logger logger = LoggerFactory.getLogger(OAuth2ClientZipCodeTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(ZipCodeTests.class);
 
     private OAuth2Client client;
     private List<String> initialZipCodes = Arrays.asList("10001", "20002", "30003");

@@ -3,23 +3,60 @@ package com.coherentsolutions.restful;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpTrace;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.net.URIBuilder;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private static final String API_BASE_URL = "http://localhost:8080/api";
-    private OAuth2Client authClient = OAuth2Client.getInstance();
+    private OAuth2Client authClient;
+
+    public UserService(OAuth2Client client) {
+        this.authClient = client;
+    }
+
+    public ApiResponse getUsers(Map<String, String> queryParams) throws IOException {
+        logger.info("Fetching users with query parameters: {}", queryParams);
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            URIBuilder uriBuilder = new URIBuilder(API_BASE_URL + "/users");
+            if (queryParams != null) {
+                queryParams.forEach(uriBuilder::addParameter);
+            }
+            HttpGet httpGet = new HttpGet(uriBuilder.build());
+            String token = authClient.getReadToken();
+            if (token != null) {
+                httpGet.setHeader("Authorization", "Bearer " + token);
+            } else {
+                httpGet.setHeader("Authorization", "Bearer invalid_token");
+            }
+
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+                int statusCode = response.getCode();
+                String responseBody = response.getEntity() != null ?
+                        EntityUtils.toString(response.getEntity()) : "";
+                logger.info("Received response with status code: {}", statusCode);
+                return new ApiResponse(statusCode, responseBody);
+            }
+        } catch (URISyntaxException | ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public ApiResponse createUser(User user) throws IOException {
         logger.info("Creating user: {}", user.getName());
@@ -34,6 +71,7 @@ public class UserService {
             json.put("name", user.getName());
             json.put("email", user.getEmail());
             json.put("sex", user.getSex());
+            json.put("age", user.getAge()); // Ensure age is included
 
             if (user.getZipCode() != null && !user.getZipCode().isEmpty()) {
                 JSONObject zipCodeJson = new JSONObject();
@@ -42,13 +80,13 @@ public class UserService {
             }
 
             logger.info("Sending POST request to create user with payload: {}", json.toString());
-            httpPost.setEntity(new StringEntity(json.toString()));
+            httpPost.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 int statusCode = response.getCode();
                 String responseBody = "";
                 if (response.getEntity() != null) {
-                    responseBody = EntityUtils.toString(response.getEntity());
+                    responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
                 }
                 logger.info("Received response with status code: {}", statusCode);
                 return new ApiResponse(statusCode, responseBody);
@@ -86,10 +124,10 @@ public class UserService {
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             // Using HttpGet as an invalid method for POST-only endpoint
-            HttpGet httpGet = new HttpGet(API_BASE_URL + "/users");
-            httpGet.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+            HttpTrace httpTrace = new HttpTrace(API_BASE_URL + "/users");
+            httpTrace.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
 
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            try (CloseableHttpResponse response = httpClient.execute(httpTrace)) {
                 int statusCode = response.getCode();
                 String responseBody = "";
                 if (response.getEntity() != null) {
