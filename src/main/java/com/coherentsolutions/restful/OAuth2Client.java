@@ -27,6 +27,7 @@ public class OAuth2Client {
     private static OAuth2Client instance;
     private String readToken;
     private String writeToken;
+    private boolean tokensInvalidated = false;
 
     private OAuth2Client() {
         // Private constructor to prevent instantiation
@@ -40,6 +41,9 @@ public class OAuth2Client {
     }
 
     public String getReadToken() throws IOException {
+        if (tokensInvalidated) {
+            return null; // Simulate that the token is invalid
+        }
         if (readToken == null) {
             readToken = getToken("read");
         }
@@ -47,6 +51,9 @@ public class OAuth2Client {
     }
 
     public String getWriteToken() throws IOException {
+        if (tokensInvalidated) {
+            return null; // Simulate that the token is invalid
+        }
         if (writeToken == null) {
             writeToken = getToken("write");
         }
@@ -139,6 +146,7 @@ public class OAuth2Client {
     public void invalidateTokens() {
         this.readToken = null;
         this.writeToken = null;
+        this.tokensInvalidated = true;
         logger.info("Tokens have been invalidated");
     }
 
@@ -147,5 +155,13 @@ public class OAuth2Client {
         this.readToken = "invalid_token";
         this.writeToken = "invalid_token";
         logger.info("Tokens have been set to invalid");
+    }
+
+    // Method to validate tokens
+    public void validateTokens() {
+        this.readToken = null;
+        this.writeToken = null;
+        this.tokensInvalidated = false;
+        logger.info("Tokens have been validated");
     }
 }

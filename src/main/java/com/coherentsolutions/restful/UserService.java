@@ -1,9 +1,6 @@
 package com.coherentsolutions.restful;
 
-import org.apache.hc.client5.http.classic.methods.HttpDelete;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.classic.methods.HttpTrace;
+import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -123,11 +120,11 @@ public class UserService {
         logger.info("Sending invalid HTTP method request to /users endpoint");
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            // Using HttpGet as an invalid method for POST-only endpoint
-            HttpTrace httpTrace = new HttpTrace(API_BASE_URL + "/users");
-            httpTrace.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+            // Using HttpPatch as an invalid method for POST-only endpoint
+            HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users");
+            httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
 
-            try (CloseableHttpResponse response = httpClient.execute(httpTrace)) {
+            try (CloseableHttpResponse response = httpClient.execute(httpPatch)) {
                 int statusCode = response.getCode();
                 String responseBody = "";
                 if (response.getEntity() != null) {

@@ -212,6 +212,8 @@ public class GetUsersTests {
 
         ApiResponse response = userService.getUsers(null);
         assertEquals(401, response.getStatusCode(), "Expected status code 401 for unauthorized access");
+        // Validate the tokens
+        client.validateTokens();
     }
 
     @Test
@@ -224,6 +226,8 @@ public class GetUsersTests {
 
         ApiResponse response = userService.getUsers(null);
         assertEquals(401, response.getStatusCode(), "Expected status code 401 for invalid token");
+        // Validate the tokens
+        client.validateTokens();
     }
 
 
