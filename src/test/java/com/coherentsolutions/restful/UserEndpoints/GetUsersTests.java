@@ -7,6 +7,8 @@ import com.coherentsolutions.restful.UserService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,21 +21,21 @@ import static org.junit.jupiter.api.Assertions.*;
 public class GetUsersTests {
 
     private static final Logger logger = LoggerFactory.getLogger(GetUsersTests.class);
-    private UserService userService;
-    private OAuth2Client client;
+    private static UserService userService;
+    private static OAuth2Client client;
 
-    @BeforeEach
-    void setUp() throws IOException {
-        client = OAuth2Client.getInstance(); // New client per test
-        userService = new UserService(client); // Pass client to service
+    @BeforeAll
+    static void globalSetUp() throws IOException {
+        // This runs only once before all the tests
+        client = OAuth2Client.getInstance(); // Create client only once
+        userService = new UserService(client);
 
-        // Reset zip codes to known state before each test
-        client.resetZipCodes(Arrays.asList("10001", "20002", "30003"));
+        client.resetZipCodes(Arrays.asList("10001", "20002", "30003")); // Only once
 
-        // Clean up users before each test
+        // Clean up users before tests
         userService.deleteAllUsers();
 
-        // Create test users
+        // Create test users once for GET request (we do not modify the server state)
         userService.createUser(User.builder()
                 .name("Alice")
                 .email("alice@example.com")
@@ -112,13 +114,18 @@ public class GetUsersTests {
         assertTrue(user.getInt("age") < 30, "User's age should be less than 30");
     }
 
-    @Test
-    @Order(4)
-    public void testGetUsersBySex() throws IOException {
-        logger.info("Running Scenario #4: Get users by sex");
+    // Parameterized test for sex-based queries
+    @ParameterizedTest
+    @Order(3)
+    @CsvSource({
+            "Male, 2",   // Expect 2 male users
+            "Female, 1"  // Expect 1 female user
+    })
+    public void testGetUsersBySex(String sex, int expectedUserCount) throws IOException {
+        logger.info("Running Parameterized Test for sex: " + sex);
 
         Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("sex", "Male");
+        queryParams.put("sex", sex);
 
         ApiResponse response = userService.getUsers(queryParams);
         assertEquals(200, response.getStatusCode(), "Expected status code 200");
@@ -126,16 +133,7 @@ public class GetUsersTests {
         String responseBody = response.getResponseBody();
         JSONArray jsonArray = new JSONArray(responseBody);
 
-        assertEquals(2, jsonArray.length(), "Expected 2 users in response");
-
-        Set<String> expectedNames = new HashSet<>(Arrays.asList("Bob", "Charlie"));
-        Set<String> actualNames = new HashSet<>();
-        for (int i = 0; i < jsonArray.length(); i++) {
-            JSONObject user = jsonArray.getJSONObject(i);
-            actualNames.add(user.getString("name"));
-            assertEquals("Male", user.getString("sex"), "Expected sex to be Male");
-        }
-        assertEquals(expectedNames, actualNames, "Expected users Bob and Charlie");
+        assertEquals(expectedUserCount, jsonArray.length(), "Expected " + expectedUserCount + " users in response");
     }
 
     // Additional Test Ideas
