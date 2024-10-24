@@ -93,6 +93,55 @@ public class UserService {
         }
     }
 
+    public ApiResponse updateUser(Long id, User user) throws IOException {
+        HttpPut httpPut = new HttpPut(API_BASE_URL + "/users/" + id);
+        httpPut.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+        httpPut.setHeader("Content-Type", "application/json");
+
+        JSONObject json = new JSONObject();
+        json.put("name", user.getName());
+        json.put("email", user.getEmail());
+        json.put("sex", user.getSex());
+        json.put("age", user.getAge());
+
+        if (user.getZipCode() != null && !user.getZipCode().isEmpty()) {
+            JSONObject zipCodeJson = new JSONObject();
+            zipCodeJson.put("code", user.getZipCode());
+            json.put("zipCode", zipCodeJson);
+        }
+
+        httpPut.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
+
+        return executeRequest(httpPut);
+    }
+
+    public ApiResponse partialUpdateUser(Long id, Map<String, Object> updates) throws IOException {
+        HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users/" + id);
+        httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+        httpPatch.setHeader("Content-Type", "application/json");
+
+        JSONObject json = new JSONObject(updates);
+        httpPatch.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
+
+        return executeRequest(httpPatch);
+    }
+
+    private ApiResponse executeRequest(HttpUriRequestBase request) throws IOException {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                int statusCode = response.getCode();
+                String responseBody = "";
+                if (response.getEntity() != null) {
+                    responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                }
+                return new ApiResponse(statusCode, responseBody);
+            }
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
     public void deleteAllUsers() throws IOException {
         logger.info("Deleting all users");
 
