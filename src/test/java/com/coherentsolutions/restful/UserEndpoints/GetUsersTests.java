@@ -74,6 +74,8 @@ public class GetUsersTests {
         assertEquals(3, jsonArray.length(), "Expected 3 users in response");
     }
 
+
+    // GET /api/users?olderThan=30&sex=Male
     @Test
     @Order(2)
     public void testGetUsersOlderThan() throws IOException {
