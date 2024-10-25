@@ -115,6 +115,60 @@ public class UserService {
         return executeRequest(httpPut);
     }
 
+    public ApiResponse updateUser(UpdateUserDto updateUserDto) throws IOException {
+        HttpPut httpPut = new HttpPut(API_BASE_URL + "/users");
+        httpPut.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+        httpPut.setHeader("Content-Type", "application/json");
+
+        // Construct JSON payload
+        JSONObject json = new JSONObject();
+        JSONObject userNewValuesJson = new JSONObject();
+        JSONObject userToChangeJson = new JSONObject();
+
+        // userNewValues
+        UserDto userNewValues = updateUserDto.getUserNewValues();
+        if (userNewValues.getName() != null) {
+            userNewValuesJson.put("name", userNewValues.getName());
+        }
+        if (userNewValues.getEmail() != null) {
+            userNewValuesJson.put("email", userNewValues.getEmail());
+        }
+        if (userNewValues.getSex() != null) {
+            userNewValuesJson.put("sex", userNewValues.getSex());
+        }
+        if (userNewValues.getAge() != null) {
+            userNewValuesJson.put("age", userNewValues.getAge());
+        }
+        if (userNewValues.getZipCode() != null) {
+            userNewValuesJson.put("zipCode", userNewValues.getZipCode());
+        }
+
+        // userToChange
+        UserDto userToChange = updateUserDto.getUserToChange();
+        if (userToChange.getName() != null) {
+            userToChangeJson.put("name", userToChange.getName());
+        }
+        if (userToChange.getEmail() != null) {
+            userToChangeJson.put("email", userToChange.getEmail());
+        }
+        if (userToChange.getSex() != null) {
+            userToChangeJson.put("sex", userToChange.getSex());
+        }
+        if (userToChange.getAge() != null) {
+            userToChangeJson.put("age", userToChange.getAge());
+        }
+        if (userToChange.getZipCode() != null) {
+            userToChangeJson.put("zipCode", userToChange.getZipCode());
+        }
+
+        json.put("userNewValues", userNewValuesJson);
+        json.put("userToChange", userToChangeJson);
+
+        httpPut.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
+
+        return executeRequest(httpPut);
+    }
+
     public ApiResponse partialUpdateUser(Long id, Map<String, Object> updates) throws IOException {
         HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users/" + id);
         httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());

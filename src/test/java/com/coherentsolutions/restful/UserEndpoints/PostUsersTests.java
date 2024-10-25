@@ -122,7 +122,7 @@ public class PostUsersTests {
         ApiResponse response2 = userService.createUser(user2);
         int statusCode = response2.getStatusCode();
 
-        assertEquals(400, statusCode, "Expected status code 400 for duplicate user");
+        assertEquals(409, statusCode, "Expected status code 409 for duplicate user");
     }
 
     @Test
