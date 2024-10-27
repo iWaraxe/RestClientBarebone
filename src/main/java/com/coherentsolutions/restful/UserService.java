@@ -43,14 +43,8 @@ public class UserService {
                 httpGet.setHeader("Authorization", "Bearer invalid_token");
             }
 
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                int statusCode = response.getCode();
-                String responseBody = response.getEntity() != null ?
-                        EntityUtils.toString(response.getEntity()) : "";
-                logger.info("Received response with status code: {}", statusCode);
-                return new ApiResponse(statusCode, responseBody);
-            }
-        } catch (URISyntaxException | ParseException e) {
+            return executeRequest(httpGet);
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
@@ -58,39 +52,27 @@ public class UserService {
     public ApiResponse createUser(User user) throws IOException {
         logger.info("Creating user: {}", user.getName());
 
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(API_BASE_URL + "/users");
-            httpPost.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
-            httpPost.setHeader("Content-Type", "application/json");
+        HttpPost httpPost = new HttpPost(API_BASE_URL + "/users");
+        httpPost.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+        httpPost.setHeader("Content-Type", "application/json");
 
-            // Construct the JSON payload
-            JSONObject json = new JSONObject();
-            json.put("name", user.getName());
-            json.put("email", user.getEmail());
-            json.put("sex", user.getSex());
-            json.put("age", user.getAge()); // Ensure age is included
+        // Construct the JSON payload
+        JSONObject json = new JSONObject();
+        json.put("name", user.getName());
+        json.put("email", user.getEmail());
+        json.put("sex", user.getSex());
+        json.put("age", user.getAge()); // Ensure age is included
 
-            if (user.getZipCode() != null && !user.getZipCode().isEmpty()) {
-                JSONObject zipCodeJson = new JSONObject();
-                zipCodeJson.put("code", user.getZipCode());
-                json.put("zipCode", zipCodeJson);
-            }
-
-            logger.info("Sending POST request to create user with payload: {}", json.toString());
-            httpPost.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                int statusCode = response.getCode();
-                String responseBody = "";
-                if (response.getEntity() != null) {
-                    responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                }
-                logger.info("Received response with status code: {}", statusCode);
-                return new ApiResponse(statusCode, responseBody);
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
+        if (user.getZipCode() != null && !user.getZipCode().isEmpty()) {
+            JSONObject zipCodeJson = new JSONObject();
+            zipCodeJson.put("code", user.getZipCode());
+            json.put("zipCode", zipCodeJson);
         }
+
+        logger.info("Sending POST request to create user with payload: {}", json.toString());
+        httpPost.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
+
+        return executeRequest(httpPost);
     }
 
     public ApiResponse updateUser(Long id, User user) throws IOException {
@@ -180,6 +162,67 @@ public class UserService {
         return executeRequest(httpPatch);
     }
 
+    public ApiResponse deleteUser(UserDto userDto) throws IOException {
+        logger.info("Deleting user: {}", userDto.getName());
+
+        HttpDeleteWithBody httpDelete = new HttpDeleteWithBody(API_BASE_URL + "/users");
+        httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+        httpDelete.setHeader("Content-Type", "application/json");
+
+        // Convert UserDto to JSON
+        JSONObject json = new JSONObject();
+        json.put("name", userDto.getName());
+        json.put("sex", userDto.getSex());
+        if (userDto.getEmail() != null) {
+            json.put("email", userDto.getEmail());
+        }
+        if (userDto.getAge() != null) {
+            json.put("age", userDto.getAge());
+        }
+        if (userDto.getZipCode() != null) {
+            json.put("zipCode", userDto.getZipCode());
+        }
+
+        httpDelete.setEntity(new StringEntity(json.toString(), StandardCharsets.UTF_8));
+
+        return executeRequest(httpDelete);
+    }
+
+    public void deleteAllUsers() throws IOException {
+        logger.info("Deleting all users");
+
+        HttpDelete httpDelete = new HttpDelete(API_BASE_URL + "/users/all");
+        httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+
+        ApiResponse response = executeRequest(httpDelete);
+        int statusCode = response.getStatusCode();
+        if (statusCode != 204) {  // 204 No Content expected
+            throw new IOException("Failed to delete all users. Status code: " + statusCode + ", Response: " + response.getResponseBody());
+        }
+    }
+
+    public ApiResponse sendInvalidDeleteMethodRequest() throws IOException {
+        logger.info("Sending invalid HTTP method request to /users/available endpoint");
+
+        // Using HttpDelete on an endpoint that doesn't support DELETE
+        HttpDelete httpDelete = new HttpDelete(API_BASE_URL + "/users/available");
+        httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+
+        return executeRequest(httpDelete);
+    }
+
+
+    public ApiResponse sendInvalidMethodRequest() throws IOException {
+        logger.info("Sending invalid HTTP method request to /users endpoint");
+
+        // Using HttpPatch as an invalid method for POST-only endpoint
+        HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users");
+        httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+
+        return executeRequest(httpPatch);
+    }
+
+    // **Single Definition of executeRequest Method**
     private ApiResponse executeRequest(HttpUriRequestBase request) throws IOException {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -192,52 +235,6 @@ public class UserService {
             }
         } catch (ParseException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-
-    public void deleteAllUsers() throws IOException {
-        logger.info("Deleting all users");
-
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpDelete httpDelete = new HttpDelete(API_BASE_URL + "/users");
-            httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
-
-            try (CloseableHttpResponse response = httpClient.execute(httpDelete)) {
-                int statusCode = response.getCode();
-                String responseBody = "";
-                if (response.getEntity() != null) {
-                    responseBody = EntityUtils.toString(response.getEntity());
-                }
-                logger.info("Received response with status code: {}", statusCode);
-                if (statusCode != 204) {  // 204 No Content expected
-                    throw new IOException("Failed to delete all users. Status code: " + statusCode + ", Response: " + responseBody);
-                }
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public ApiResponse sendInvalidMethodRequest() throws IOException {
-        logger.info("Sending invalid HTTP method request to /users endpoint");
-
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            // Using HttpPatch as an invalid method for POST-only endpoint
-            HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users");
-            httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
-
-            try (CloseableHttpResponse response = httpClient.execute(httpPatch)) {
-                int statusCode = response.getCode();
-                String responseBody = "";
-                if (response.getEntity() != null) {
-                    responseBody = EntityUtils.toString(response.getEntity());
-                }
-                logger.info("Received response with status code: {}", statusCode);
-                return new ApiResponse(statusCode, responseBody);
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
         }
     }
 }

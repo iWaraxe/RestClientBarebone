@@ -45,6 +45,7 @@ public class PostUsersTests {
                 .email("alice@example.com")
                 .sex("Female")
                 .zipCode("10001")
+                .age(25) // Ensure age is included if required
                 .build();
 
         ApiResponse response = userService.createUser(user);
@@ -55,11 +56,8 @@ public class PostUsersTests {
         assertNotNull(responseBody, "Response body should not be null");
         assertTrue(responseBody.contains("Alice"), "Response should contain user name");
 
-        // Remove this assertion, as zip codes are not removed after user creation
-        // assertFalse(client.getAvailableZipCodes().contains("10001"), "Zip code 10001 should be removed");
-
-        // Instead, verify that the zip code still exists
-        assertTrue(client.getAvailableZipCodes().contains("10001"), "Zip code 10001 should still be available");
+        // Verify that the zip code is now unavailable
+        assertFalse(client.getAvailableZipCodes().contains("10001"), "Zip code 10001 should be unavailable after user creation");
     }
 
     @Test
