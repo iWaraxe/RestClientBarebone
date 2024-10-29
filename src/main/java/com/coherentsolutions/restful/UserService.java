@@ -1,9 +1,13 @@
 package com.coherentsolutions.restful;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.classic.methods.*;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
@@ -12,6 +16,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -22,9 +27,12 @@ public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private static final String API_BASE_URL = "http://localhost:8080/api";
     private OAuth2Client authClient;
+    private ObjectMapper objectMapper;
+
 
     public UserService(OAuth2Client client) {
         this.authClient = client;
+        this.objectMapper = new ObjectMapper();
     }
 
     public ApiResponse getUsers(Map<String, String> queryParams) throws IOException {
@@ -220,6 +228,19 @@ public class UserService {
         httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
 
         return executeRequest(httpPatch);
+    }
+
+    public ApiResponse uploadUsers(File jsonFile) throws IOException {
+        HttpPost httpPost = new HttpPost(API_BASE_URL + "/users/upload");
+        httpPost.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
+
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        builder.addBinaryBody("file", jsonFile, ContentType.APPLICATION_JSON, jsonFile.getName());
+
+        HttpEntity multipart = builder.build();
+        httpPost.setEntity(multipart);
+
+        return executeRequest(httpPost);
     }
 
     // **Single Definition of executeRequest Method**
