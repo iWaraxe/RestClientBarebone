@@ -174,7 +174,4 @@ public class DeleteUserTests {
         ApiResponse response = userService.sendInvalidDeleteMethodRequest();
         assertEquals(405, response.getStatusCode(), "Expected status code 405 for invalid HTTP method");
     }
-
-
-    // Additional helper method in UserService to send invalid method request
 }
