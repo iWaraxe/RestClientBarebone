@@ -1,8 +1,8 @@
 package com.coherentsolutions.restful.ZipCodeEndpoints;
 
-import com.coherentsolutions.restful.BearerTokenAuthentication;
-import com.coherentsolutions.restful.OAuth2Client;
-import com.coherentsolutions.restful.UserService;
+import com.coherentsolutions.restful.auth.BearerTokenAuthentication;
+import com.coherentsolutions.restful.auth.OAuth2Client;
+import com.coherentsolutions.restful.user.UserService;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;

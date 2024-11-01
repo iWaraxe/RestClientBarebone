@@ -1,6 +1,11 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
 import com.coherentsolutions.restful.*;
+import com.coherentsolutions.restful.auth.AuthenticationStrategy;
+import com.coherentsolutions.restful.auth.BearerTokenAuthentication;
+import com.coherentsolutions.restful.auth.OAuth2Client;
+import com.coherentsolutions.restful.user.User;
+import com.coherentsolutions.restful.user.UserService;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
@@ -8,8 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 

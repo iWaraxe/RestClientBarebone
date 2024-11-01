@@ -1,4 +1,4 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.auth;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;

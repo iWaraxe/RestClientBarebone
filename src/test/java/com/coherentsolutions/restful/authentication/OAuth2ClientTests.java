@@ -1,6 +1,6 @@
 package com.coherentsolutions.restful.authentication;
 
-import com.coherentsolutions.restful.OAuth2Client;
+import com.coherentsolutions.restful.auth.OAuth2Client;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;

@@ -1,4 +1,4 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.client;
 
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;

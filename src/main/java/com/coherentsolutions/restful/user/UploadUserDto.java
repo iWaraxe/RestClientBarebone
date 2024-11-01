@@ -1,5 +1,6 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.user;
 
+import com.coherentsolutions.restful.ZipCodeDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

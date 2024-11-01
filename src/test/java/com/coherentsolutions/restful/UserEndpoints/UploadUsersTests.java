@@ -1,6 +1,11 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
 import com.coherentsolutions.restful.*;
+import com.coherentsolutions.restful.auth.AuthenticationStrategy;
+import com.coherentsolutions.restful.auth.BearerTokenAuthentication;
+import com.coherentsolutions.restful.auth.OAuth2Client;
+import com.coherentsolutions.restful.user.UploadUserDto;
+import com.coherentsolutions.restful.user.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import org.json.JSONArray;

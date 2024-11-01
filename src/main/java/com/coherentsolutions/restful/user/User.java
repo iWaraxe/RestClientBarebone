@@ -1,4 +1,4 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.user;
 
 import lombok.*;
 

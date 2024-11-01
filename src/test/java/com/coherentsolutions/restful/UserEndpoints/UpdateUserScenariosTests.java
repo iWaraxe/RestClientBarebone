@@ -1,8 +1,14 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
 import com.coherentsolutions.restful.*;
+import com.coherentsolutions.restful.auth.AuthenticationStrategy;
+import com.coherentsolutions.restful.auth.BearerTokenAuthentication;
+import com.coherentsolutions.restful.auth.OAuth2Client;
+import com.coherentsolutions.restful.user.UpdateUserDto;
+import com.coherentsolutions.restful.user.User;
+import com.coherentsolutions.restful.user.UserDto;
+import com.coherentsolutions.restful.user.UserService;
 import io.qameta.allure.*;
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;

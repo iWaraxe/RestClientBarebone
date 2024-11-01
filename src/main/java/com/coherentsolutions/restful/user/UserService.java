@@ -1,11 +1,16 @@
-package com.coherentsolutions.restful;
+package com.coherentsolutions.restful.user;
 
+import com.coherentsolutions.restful.ApiResponse;
+import com.coherentsolutions.restful.client.BasicHttpClient;
+import com.coherentsolutions.restful.HttpDeleteWithBody;
+import com.coherentsolutions.restful.auth.AuthenticationStrategy;
+import com.coherentsolutions.restful.client.HttpClientComponent;
+import com.coherentsolutions.restful.client.LoggingHttpClient;
+import com.coherentsolutions.restful.client.RetryHttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
