@@ -4,10 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
@@ -29,19 +27,32 @@ public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private static final String API_BASE_URL = "http://localhost:8080/api";
     private final AuthenticationStrategy authStrategy;
-    private final HttpClient httpClient;
+    private final HttpClientComponent httpClient;
     private ObjectMapper objectMapper;
 
 
     public UserService(AuthenticationStrategy authStrategy) {
+        // Initialize the basic client
+        HttpClientComponent basicClient = new BasicHttpClient();
+
+        // Apply decorators
+        HttpClientComponent loggingClient = new LoggingHttpClient(basicClient);
+        HttpClientComponent retryClient = new RetryHttpClient(loggingClient, 3);
+
         this.authStrategy = authStrategy;
-        this.httpClient = HttpClientBuilder.create().build();
+        this.httpClient = retryClient;
         this.objectMapper = new ObjectMapper();
     }
 
     public ApiResponse executeRequest(HttpUriRequestBase request) throws IOException {
         authStrategy.authenticate(request);
-        try (CloseableHttpResponse response = (CloseableHttpResponse) httpClient.execute(request)) {
+        try {
+            logger.debug("Executing request: {} {}", request.getMethod(), request.getUri());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getCode();
             String responseBody = "";
 
@@ -49,8 +60,8 @@ public class UserService {
                 responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             }
 
-            logger.debug("Response Status Code: {}", statusCode);
-            logger.debug("Response Body: {}", responseBody);
+            logger.debug("Received response - Status Code: {}", statusCode);
+            logger.debug("Received response - Body: {}", responseBody);
 
             return new ApiResponse(statusCode, responseBody);
         } catch (ParseException e) {
