@@ -1,10 +1,12 @@
 package com.coherentsolutions.restful;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
@@ -26,42 +28,56 @@ public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private static final String API_BASE_URL = "http://localhost:8080/api";
-    private OAuth2Client authClient;
+    private final AuthenticationStrategy authStrategy;
+    private final HttpClient httpClient;
     private ObjectMapper objectMapper;
 
 
-    public UserService(OAuth2Client client) {
-        this.authClient = client;
+    public UserService(AuthenticationStrategy authStrategy) {
+        this.authStrategy = authStrategy;
+        this.httpClient = HttpClientBuilder.create().build();
         this.objectMapper = new ObjectMapper();
+    }
+
+    public ApiResponse executeRequest(HttpUriRequestBase request) throws IOException {
+        authStrategy.authenticate(request);
+        try (CloseableHttpResponse response = (CloseableHttpResponse) httpClient.execute(request)) {
+            int statusCode = response.getCode();
+            String responseBody = "";
+
+            if (response.getEntity() != null) {
+                responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            }
+
+            logger.debug("Response Status Code: {}", statusCode);
+            logger.debug("Response Body: {}", responseBody);
+
+            return new ApiResponse(statusCode, responseBody);
+        } catch (ParseException e) {
+            logger.error("Error parsing response", e);
+            throw new RuntimeException(e);
+        }
     }
 
     public ApiResponse getUsers(Map<String, String> queryParams) throws IOException {
         logger.info("Fetching users with query parameters: {}", queryParams);
-
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+        try {
             URIBuilder uriBuilder = new URIBuilder(API_BASE_URL + "/users");
             if (queryParams != null) {
                 queryParams.forEach(uriBuilder::addParameter);
             }
             HttpGet httpGet = new HttpGet(uriBuilder.build());
-            String token = authClient.getReadToken();
-            if (token != null) {
-                httpGet.setHeader("Authorization", "Bearer " + token);
-            } else {
-                httpGet.setHeader("Authorization", "Bearer invalid_token");
-            }
 
             return executeRequest(httpGet);
         } catch (URISyntaxException e) {
+            logger.error("Invalid URI syntax", e);
             throw new RuntimeException(e);
         }
     }
 
     public ApiResponse createUser(User user) throws IOException {
         logger.info("Creating user: {}", user.getName());
-
         HttpPost httpPost = new HttpPost(API_BASE_URL + "/users");
-        httpPost.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
         httpPost.setHeader("Content-Type", "application/json");
 
         // Construct the JSON payload
@@ -69,7 +85,7 @@ public class UserService {
         json.put("name", user.getName());
         json.put("email", user.getEmail());
         json.put("sex", user.getSex());
-        json.put("age", user.getAge()); // Ensure age is included
+        json.put("age", user.getAge());
 
         if (user.getZipCode() != null && !user.getZipCode().isEmpty()) {
             JSONObject zipCodeJson = new JSONObject();
@@ -85,7 +101,6 @@ public class UserService {
 
     public ApiResponse updateUser(Long id, User user) throws IOException {
         HttpPut httpPut = new HttpPut(API_BASE_URL + "/users/" + id);
-        httpPut.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
         httpPut.setHeader("Content-Type", "application/json");
 
         JSONObject json = new JSONObject();
@@ -107,7 +122,6 @@ public class UserService {
 
     public ApiResponse updateUser(UpdateUserDto updateUserDto) throws IOException {
         HttpPut httpPut = new HttpPut(API_BASE_URL + "/users");
-        httpPut.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
         httpPut.setHeader("Content-Type", "application/json");
 
         // Construct JSON payload
@@ -161,7 +175,6 @@ public class UserService {
 
     public ApiResponse partialUpdateUser(Long id, Map<String, Object> updates) throws IOException {
         HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users/" + id);
-        httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
         httpPatch.setHeader("Content-Type", "application/json");
 
         JSONObject json = new JSONObject(updates);
@@ -174,7 +187,6 @@ public class UserService {
         logger.info("Deleting user: {}", userDto.getName());
 
         HttpDeleteWithBody httpDelete = new HttpDeleteWithBody(API_BASE_URL + "/users");
-        httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
         httpDelete.setHeader("Content-Type", "application/json");
 
         // Convert UserDto to JSON
@@ -198,13 +210,10 @@ public class UserService {
 
     public void deleteAllUsers() throws IOException {
         logger.info("Deleting all users");
-
         HttpDelete httpDelete = new HttpDelete(API_BASE_URL + "/users/all");
-        httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
-
         ApiResponse response = executeRequest(httpDelete);
         int statusCode = response.getStatusCode();
-        if (statusCode != 204) {  // 204 No Content expected
+        if (statusCode != 204) {
             throw new IOException("Failed to delete all users. Status code: " + statusCode + ", Response: " + response.getResponseBody());
         }
     }
@@ -214,7 +223,6 @@ public class UserService {
 
         // Using HttpDelete on an endpoint that doesn't support DELETE
         HttpDelete httpDelete = new HttpDelete(API_BASE_URL + "/users/available");
-        httpDelete.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
 
         return executeRequest(httpDelete);
     }
@@ -225,14 +233,12 @@ public class UserService {
 
         // Using HttpPatch as an invalid method for POST-only endpoint
         HttpPatch httpPatch = new HttpPatch(API_BASE_URL + "/users");
-        httpPatch.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
 
         return executeRequest(httpPatch);
     }
 
     public ApiResponse uploadUsers(File jsonFile) throws IOException {
         HttpPost httpPost = new HttpPost(API_BASE_URL + "/users/upload");
-        httpPost.setHeader("Authorization", "Bearer " + authClient.getWriteToken());
 
         MultipartEntityBuilder builder = MultipartEntityBuilder.create();
         builder.addBinaryBody("file", jsonFile, ContentType.APPLICATION_JSON, jsonFile.getName());
@@ -241,21 +247,5 @@ public class UserService {
         httpPost.setEntity(multipart);
 
         return executeRequest(httpPost);
-    }
-
-    // **Single Definition of executeRequest Method**
-    private ApiResponse executeRequest(HttpUriRequestBase request) throws IOException {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                int statusCode = response.getCode();
-                String responseBody = "";
-                if (response.getEntity() != null) {
-                    responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                }
-                return new ApiResponse(statusCode, responseBody);
-            }
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -1,9 +1,6 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
-import com.coherentsolutions.restful.ApiResponse;
-import com.coherentsolutions.restful.OAuth2Client;
-import com.coherentsolutions.restful.User;
-import com.coherentsolutions.restful.UserService;
+import com.coherentsolutions.restful.*;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +20,8 @@ public class PostUsersTests {
     @BeforeEach
     void setUp() throws IOException {
         client = OAuth2Client.getInstance();
-        userService = new UserService(client);
+        AuthenticationStrategy authStrategy = new BearerTokenAuthentication(client);
+        userService = new UserService(authStrategy);
 
         // Reset zip codes to known state before each test
         client.resetZipCodes(Arrays.asList("10001", "20002", "30003"));

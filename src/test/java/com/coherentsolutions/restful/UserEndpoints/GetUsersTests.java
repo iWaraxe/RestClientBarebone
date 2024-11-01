@@ -1,9 +1,6 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
-import com.coherentsolutions.restful.ApiResponse;
-import com.coherentsolutions.restful.OAuth2Client;
-import com.coherentsolutions.restful.User;
-import com.coherentsolutions.restful.UserService;
+import com.coherentsolutions.restful.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.*;
@@ -28,7 +25,8 @@ public class GetUsersTests {
     static void globalSetUp() throws IOException {
         // This runs only once before all the tests
         client = OAuth2Client.getInstance(); // Create client only once
-        userService = new UserService(client);
+        AuthenticationStrategy authStrategy = new BearerTokenAuthentication(client);;
+        userService = new UserService(authStrategy);
 
         client.resetZipCodes(Arrays.asList("10001", "20002", "30003")); // Only once
 

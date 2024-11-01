@@ -19,7 +19,8 @@ public class UpdateUserScenarios {
     @BeforeEach
     void setUp() throws IOException {
         client = OAuth2Client.getInstance();
-        userService = new UserService(client);
+        AuthenticationStrategy authStrategy = new BearerTokenAuthentication(client);
+        userService = new UserService(authStrategy);
 
         // Clean up users
         userService.deleteAllUsers();

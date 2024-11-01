@@ -1,9 +1,6 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
-import com.coherentsolutions.restful.ApiResponse;
-import com.coherentsolutions.restful.OAuth2Client;
-import com.coherentsolutions.restful.User;
-import com.coherentsolutions.restful.UserService;
+import com.coherentsolutions.restful.*;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,8 +24,8 @@ public class UpdateUserConcurrencyTest {
     @BeforeAll
     static void setUp() throws IOException {
         client = OAuth2Client.getInstance();
-        userService = new UserService(client);
-
+        AuthenticationStrategy authStrategy = new BearerTokenAuthentication(client);
+        userService = new UserService(authStrategy);
         // Clean up existing users
         userService.deleteAllUsers();
 

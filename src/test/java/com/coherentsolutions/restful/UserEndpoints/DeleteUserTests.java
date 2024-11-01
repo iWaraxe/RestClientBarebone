@@ -16,11 +16,13 @@ public class DeleteUserTests {
     private static final Logger logger = LoggerFactory.getLogger(DeleteUserTests.class);
     private UserService userService;
     private OAuth2Client client;
+    private AuthenticationStrategy writeAuthStrategy;
 
     @BeforeEach
     void setUp() throws IOException {
         client = OAuth2Client.getInstance();
-        userService = new UserService(client);
+        writeAuthStrategy = new BearerTokenAuthentication(client);
+        userService = new UserService(writeAuthStrategy);
 
         // Reset zip codes
         client.resetZipCodes(Arrays.asList("10001", "20002", "30003"));

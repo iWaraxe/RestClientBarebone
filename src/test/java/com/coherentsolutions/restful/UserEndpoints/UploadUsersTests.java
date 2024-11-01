@@ -28,7 +28,8 @@ class UploadUsersTests {
     @BeforeEach
     void setUp() throws IOException {
         client = OAuth2Client.getInstance();
-        userService = new UserService(client);
+        AuthenticationStrategy authStrategy = new BearerTokenAuthentication(client);
+        userService = new UserService(authStrategy);
         objectMapper = new ObjectMapper();
 
         // Reset zip codes to a known state before each test
