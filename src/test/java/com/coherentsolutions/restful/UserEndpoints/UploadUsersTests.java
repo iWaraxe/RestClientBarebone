@@ -68,14 +68,14 @@ public class UploadUsersTests {
                         .email("alice@example.com")
                         .sex("Female")
                         .age(25)
-                        .zipCode(ZipCodeDto.builder().code("10001").build())
+                        .zipCode(ZipCodeDto.builder().code("10001").build()) // Correctly passing ZipCodeDto
                         .build(),
                 UploadUserDto.builder()
                         .name("Bob")
                         .email("bob@example.com")
                         .sex("Male")
                         .age(30)
-                        .zipCode(ZipCodeDto.builder().code("20002").build())
+                        .zipCode(ZipCodeDto.builder().code("20002").build()) // Correctly passing ZipCodeDto
                         .build()
         );
 
@@ -116,7 +116,7 @@ public class UploadUsersTests {
                         .email("charlie@example.com")
                         .sex("Male")
                         .age(28)
-                        .zipCode(ZipCodeDto.builder().code("99999").build()) // Unavailable Zip Code
+                        .zipCode(ZipCodeDto.builder().code("99999").build()) // Correctly passing ZipCodeDto
                         .build()
         );
 
@@ -154,7 +154,7 @@ public class UploadUsersTests {
                         .email("dana@example.com")
                         .sex("Female")
                         .age(26)
-                        .zipCode(ZipCodeDto.builder().code("10001").build()) // Missing name
+                        .zipCode(ZipCodeDto.builder().code("10001").build()) // Correctly passing ZipCodeDto
                         .build()
         );
 

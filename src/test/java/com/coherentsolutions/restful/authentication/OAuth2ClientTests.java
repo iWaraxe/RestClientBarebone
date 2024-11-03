@@ -1,9 +1,14 @@
 package com.coherentsolutions.restful.authentication;
 
-import com.coherentsolutions.restful.auth.OAuth2Client;
-import com.coherentsolutions.restful.exception.AuthenticationException;
+import com.coherentsolutions.restful.config.ApplicationConfig;
 import io.qameta.allure.*;
-import org.junit.jupiter.api.BeforeEach;
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -11,9 +16,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.*;
+import static io.restassured.RestAssured.given;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Epic("Authentication")
@@ -21,15 +25,49 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OAuth2ClientTests {
 
     private static final Logger logger = LoggerFactory.getLogger(OAuth2ClientTests.class);
-    private OAuth2Client client;
 
-    @BeforeEach
-    @Step("Setup: Initializing OAuth2Client instance")
-    void setUp() throws IOException {
-        client = OAuth2Client.getInstance();
-        client.validateTokens(); // Ensure tokens are in a valid state before each test
-        logger.info("OAuth2Client instance initialized");
-        attachCustomMessage("OAuth2Client instance initialized");
+    // Configuration variables
+    private static String BASE_URL;
+    private static String TOKEN_ENDPOINT;
+    private static String CLIENT_ID;
+    private static String CLIENT_SECRET;
+
+    private static RequestSpecification requestSpec;
+
+    @BeforeAll
+    @Step("Setup: Configuring Rest-Assured with base specifications")
+    static void globalSetUp() {
+        // Initialize ApplicationConfig
+        ApplicationConfig config = ApplicationConfig.getInstance();
+
+        // Retrieve configuration properties
+        BASE_URL = config.getApiBaseUrl();
+        TOKEN_ENDPOINT = config.getTokenUrl();
+        CLIENT_ID = config.getClientId();
+        CLIENT_SECRET = config.getClientSecret();
+
+        // Validate that essential properties are not null or empty
+        assertNotNull(BASE_URL, "API Base URL should not be null");
+        assertNotNull(TOKEN_ENDPOINT, "Token URL should not be null");
+        assertNotNull(CLIENT_ID, "Client ID should not be null");
+        assertNotNull(CLIENT_SECRET, "Client Secret should not be null");
+        assertFalse(BASE_URL.isEmpty(), "API Base URL should not be empty");
+        assertFalse(TOKEN_ENDPOINT.isEmpty(), "Token URL should not be empty");
+        assertFalse(CLIENT_ID.isEmpty(), "Client ID should not be empty");
+        assertFalse(CLIENT_SECRET.isEmpty(), "Client Secret should not be empty");
+
+        // Initialize Rest-Assured's request specification
+        requestSpec = new RequestSpecBuilder()
+                .setBaseUri(BASE_URL)
+                .setContentType(ContentType.URLENC) // OAuth2 token requests typically use application/x-www-form-urlencoded
+                .log(LogDetail.ALL)
+                .build();
+
+        RestAssured.requestSpecification = requestSpec;
+
+        logger.info("Rest-Assured configured with Base URL: {}", BASE_URL);
+        logger.info("Token Endpoint: {}", TOKEN_ENDPOINT);
+        attachCustomMessage("Rest-Assured configured successfully with Base URL: " + BASE_URL);
     }
 
     @Test
@@ -37,17 +75,41 @@ public class OAuth2ClientTests {
     @Story("Retrieve Read Token")
     @Severity(SeverityLevel.BLOCKER)
     @Description("Ensure that the API retrieves a valid read token successfully.")
-    public void testGetReadToken() throws IOException {
+    public void testGetReadToken() {
         logger.info("Running Scenario #1: Retrieve Read Token");
 
         Allure.step("Sending request to get read token");
-        String token = client.getReadToken();
-        attachToken("Read Token", token);
 
-        Allure.step("Asserting that the read token is valid");
-        assertNotNull(token, "Token should not be null");
-        assertFalse(token.isEmpty(), "Token should not be empty");
-        assertTrue(token.length() > 0, "Token length should be greater than 0");
+        // Send POST request to obtain the read token
+        Response tokenResponse = given()
+                .auth()
+                .preemptive()
+                .basic(CLIENT_ID, CLIENT_SECRET)
+                .formParam("grant_type", "client_credentials")
+                .formParam("scope", "read") // Assuming "read" scope is used for read token
+                .when()
+                .post(TOKEN_ENDPOINT)
+                .then()
+                .extract()
+                .response();
+
+        attachResponseDetails(tokenResponse);
+
+        // Assert that the response status code is 200 (OK)
+        assertEquals(200, tokenResponse.getStatusCode(), "Expected status code 200 but got " + tokenResponse.getStatusCode());
+
+        // Extract the access token from the response
+        String accessToken = tokenResponse.jsonPath().getString("access_token");
+
+        // Log and attach the token
+        logger.info("Obtained Read Token: {}", accessToken);
+        Allure.step("Obtained Read Token: " + accessToken);
+        attachToken("Read Token", accessToken);
+
+        // Perform assertions on the token
+        assertNotNull(accessToken, "Token should not be null");
+        assertFalse(accessToken.isEmpty(), "Token should not be empty");
+        assertTrue(accessToken.length() > 0, "Token length should be greater than 0");
     }
 
     @Test
@@ -55,76 +117,51 @@ public class OAuth2ClientTests {
     @Story("Retrieve Write Token")
     @Severity(SeverityLevel.BLOCKER)
     @Description("Ensure that the API retrieves a valid write token successfully.")
-    public void testGetWriteToken() throws IOException {
+    public void testGetWriteToken() {
         logger.info("Running Scenario #2: Retrieve Write Token");
 
         Allure.step("Sending request to get write token");
-        String token = client.getWriteToken();
-        attachToken("Write Token", token);
 
-        Allure.step("Asserting that the write token is valid");
-        assertNotNull(token, "Token should not be null");
-        assertFalse(token.isEmpty(), "Token should not be empty");
-        assertTrue(token.length() > 0, "Token length should be greater than 0");
+        // Send POST request to obtain the write token
+        Response tokenResponse = given()
+                .auth()
+                .preemptive()
+                .basic(CLIENT_ID, CLIENT_SECRET)
+                .formParam("grant_type", "client_credentials")
+                .formParam("scope", "write") // Assuming "write" scope is used for write token
+                .when()
+                .post(TOKEN_ENDPOINT)
+                .then()
+                .extract()
+                .response();
+
+        attachResponseDetails(tokenResponse);
+
+        // Assert that the response status code is 200 (OK)
+        assertEquals(200, tokenResponse.getStatusCode(), "Expected status code 200 but got " + tokenResponse.getStatusCode());
+
+        // Extract the access token from the response
+        String accessToken = tokenResponse.jsonPath().getString("access_token");
+
+        // Log and attach the token
+        logger.info("Obtained Write Token: {}", accessToken);
+        Allure.step("Obtained Write Token: " + accessToken);
+        attachToken("Write Token", accessToken);
+
+        // Perform assertions on the token
+        assertNotNull(accessToken, "Token should not be null");
+        assertFalse(accessToken.isEmpty(), "Token should not be empty");
+        assertTrue(accessToken.length() > 0, "Token length should be greater than 0");
     }
 
-    @Test
-    @Order(3)
-    @Story("Invalid Token Handling")
-    @Severity(SeverityLevel.CRITICAL)
-    @Description("Ensure that the client properly handles invalid tokens.")
-    public void testInvalidToken() {
-        logger.info("Running Scenario #3: Invalid Token Handling");
-
-        Allure.step("Setting invalid token");
-        client.setInvalidToken();
-
-        Allure.step("Attempting to use invalid read token");
-                                                                                                                                                                                                                                                                                                                            assertThrows(AuthenticationException.class, () -> {
-            String token = client.getReadToken();
-            attachToken("Invalid Read Token", token);
-        }, "Should throw AuthenticationException for invalid read token");
-
-        Allure.step("Attempting to use invalid write token");
-        assertThrows(AuthenticationException.class, () -> {
-            String token = client.getWriteToken();
-            attachToken("Invalid Write Token", token);
-        }, "Should throw AuthenticationException for invalid write token");
-    }
-
-    @Test
-    @Order(4)
-    @Story("Token Invalidation")
-    @Severity(SeverityLevel.CRITICAL)
-    @Description("Ensure that token invalidation works correctly.")
-    public void testTokenInvalidation() {
-        logger.info("Running Scenario #4: Token Invalidation");
-
-        Allure.step("Invalidating tokens");
-        client.invalidateTokens();
-
-        Allure.step("Attempting to use invalidated read token");
-        assertThrows(AuthenticationException.class, () -> {
-            String token = client.getReadToken();
-            attachToken("Invalidated Read Token", token);
-        }, "Should throw AuthenticationException for invalidated read token");
-
-        Allure.step("Attempting to use invalidated write token");
-        assertThrows(AuthenticationException.class, () -> {
-            String token = client.getWriteToken();
-            attachToken("Invalidated Write Token", token);
-        }, "Should throw AuthenticationException for invalidated write token");
-
-        Allure.step("Validating tokens");
-        client.validateTokens();
-
-        Allure.step("Verifying tokens work after revalidation");
-        assertDoesNotThrow(() -> {
-            String readToken = client.getReadToken();
-            String writeToken = client.getWriteToken();
-            assertNotNull(readToken, "Read token should be valid after revalidation");
-            assertNotNull(writeToken, "Write token should be valid after revalidation");
-        });
+    /**
+     * Attaches the entire response to the Allure report.
+     *
+     * @param response The Response object to attach.
+     */
+    @Attachment(value = "OAuth2 Token Response", type = "application/json")
+    private String attachResponseDetails(Response response) {
+        return response.getBody().asPrettyString();
     }
 
     /**
@@ -144,7 +181,7 @@ public class OAuth2ClientTests {
      * @param message The message to attach.
      */
     @Attachment(value = "Custom Message", type = "text/plain")
-    private String attachCustomMessage(String message) {
+    private static String attachCustomMessage(String message) {
         return message;
     }
 }

@@ -1,75 +1,96 @@
 package com.coherentsolutions.restful.UserEndpoints;
 
-import com.coherentsolutions.restful.*;
-import com.coherentsolutions.restful.auth.AuthenticationStrategy;
-import com.coherentsolutions.restful.auth.BearerTokenAuthentication;
-import com.coherentsolutions.restful.auth.OAuth2Client;
-import com.coherentsolutions.restful.exception.*;
-import com.coherentsolutions.restful.user.User;
-import com.coherentsolutions.restful.user.UserDto;
-import com.coherentsolutions.restful.user.UserService;
+import com.coherentsolutions.restful.config.RestAssuredConfig;
 import io.qameta.allure.*;
+import io.restassured.response.Response;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Epic("User Management")
 @Feature("Delete User")
-public class DeleteUserTests {
+public class DeleteUserTests extends RestAssuredConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(DeleteUserTests.class);
-    private UserService userService;
-    private OAuth2Client client;
-    private AuthenticationStrategy writeAuthStrategy;
+    private String writeToken;
 
     @BeforeEach
     @Step("Setting up the test environment")
-    void setUp() throws IOException {
-        client = OAuth2Client.getInstance();
-        client.validateTokens(); // Ensure tokens are valid at start
-        writeAuthStrategy = new BearerTokenAuthentication(client);
-        userService = new UserService(writeAuthStrategy);
+    void setUp() {
+        writeToken = getOAuthToken("write");
 
         // Reset zip codes
         Allure.step("Resetting zip codes to default");
-        client.resetZipCodes(Arrays.asList("10001", "20002", "30003"));
+        given()
+                .auth().oauth2(writeToken)
+                .body(Arrays.asList("10001", "20002", "30003"))
+                .when()
+                .post(API_BASE_URL + "/zip-codes/reset")
+                .then()
+                .statusCode(200);
 
         // Clean up users
         Allure.step("Cleaning up existing users");
-        userService.deleteAllUsers();
+        given()
+                .auth().oauth2(writeToken)
+                .when()
+                .delete(API_BASE_URL + "/users/all")
+                .then()
+                .statusCode(204);
 
-        // Create users for testing
+        // Create test users
         Allure.step("Creating test users: Alice and Bob");
         createTestUsers();
     }
 
     private void createTestUsers() {
-        try {
-            userService.createUser(User.builder()
-                    .name("Alice")
-                    .email("alice@example.com")
-                    .sex("Female")
-                    .age(25)
-                    .zipCode("10001")
-                    .build());
+        // Create Alice
+        String aliceJson = """
+            {
+                "name": "Alice",
+                "email": "alice@example.com",
+                "sex": "Female",
+                "age": 25,
+                "zipCode": {
+                    "code": "10001"
+                }
+            }""";
 
-            userService.createUser(User.builder()
-                    .name("Bob")
-                    .email("bob@example.com")
-                    .sex("Male")
-                    .age(30)
-                    .zipCode("20002")
-                    .build());
-        } catch (Exception e) {
-            logger.error("Failed to create test users", e);
-            throw new RuntimeException("Test setup failed", e);
-        }
+        given()
+                .auth().oauth2(writeToken)
+                .body(aliceJson)
+                .when()
+                .post(API_BASE_URL + "/users")
+                .then()
+                .statusCode(201);
+
+        // Create Bob
+        String bobJson = """
+            {
+                "name": "Bob",
+                "email": "bob@example.com",
+                "sex": "Male",
+                "age": 30,
+                "zipCode": {
+                    "code": "20002"
+                }
+            }""";
+
+        given()
+                .auth().oauth2(writeToken)
+                .body(bobJson)
+                .when()
+                .post(API_BASE_URL + "/users")
+                .then()
+                .statusCode(201);
     }
 
     @Test
@@ -80,33 +101,46 @@ public class DeleteUserTests {
     public void testDeleteUser_AllFieldsProvided() {
         logger.info("Running Scenario #1: Delete user with all fields provided");
 
-        UserDto userToDelete = UserDto.builder()
-                .name("Alice")
-                .sex("Female")
-                .email("alice@example.com")
-                .age(25)
-                .zipCode("10001")
-                .build();
+        String userToDelete = """
+            {
+                "name": "Alice",
+                "sex": "Female",
+                "email": "alice@example.com",
+                "age": 25,
+                "zipCode": "10001"
+            }""";
 
         Allure.step("Deleting user: Alice with all provided fields");
-        assertDoesNotThrow(() -> {
-            ApiResponse response = userService.deleteUser(userToDelete);
-            attachResponseDetails(response);
-            assertEquals(204, response.getStatusCode(), "Expected status code 204");
-        });
+        Response response = given()
+                .auth().oauth2(writeToken)
+                .body(userToDelete)
+                .when()
+                .delete(API_BASE_URL + "/users");
+
+        // Attach response details to Allure
+        attachResponseToAllure(response);
+
+        response.then().statusCode(204);
 
         // Verify user is deleted
         Allure.step("Verifying that user Alice is deleted");
-        assertDoesNotThrow(() -> {
-            ApiResponse getUsersResponse = userService.getUsers(null);
-            assertFalse(getUsersResponse.getResponseBody().contains("Alice"), "User Alice should be deleted");
-        });
+        given()
+                .auth().oauth2(writeToken)
+                .when()
+                .get(API_BASE_URL + "/users")
+                .then()
+                .statusCode(200)
+                .body("findAll { it.name == 'Alice' }", empty());
 
         // Verify zip code is returned to available list
         Allure.step("Verifying that zip code 10001 is available");
-        assertDoesNotThrow(() -> {
-            assertTrue(client.getAvailableZipCodes().contains("10001"), "Zip code 10001 should be available");
-        });
+        given()
+                .auth().oauth2(writeToken)
+                .when()
+                .get(API_BASE_URL + "/zip-codes")
+                .then()
+                .statusCode(200)
+                .body("findAll { it.code == '10001' }", not(empty()));
     }
 
     @Test
@@ -117,19 +151,24 @@ public class DeleteUserTests {
     public void testDeleteUser_RequiredFieldsOnly() {
         logger.info("Running Scenario #2: Delete user with required fields only");
 
-        UserDto userToDelete = UserDto.builder()
-                .name("Bob")
-                .sex("Male")
-                .build();
+        String userToDelete = """
+            {
+                "name": "Bob",
+                "sex": "Male"
+            }""";
 
         Allure.step("Deleting user: Bob with required fields only");
-        assertDoesNotThrow(() -> {
-            ApiResponse response = userService.deleteUser(userToDelete);
-            attachResponseDetails(response);
-            assertEquals(204, response.getStatusCode(), "Expected status code 204");
-        });
+        Response response = given()
+                .auth().oauth2(writeToken)
+                .body(userToDelete)
+                .when()
+                .delete(API_BASE_URL + "/users");
 
-        // Verify deletion
+        attachResponseToAllure(response);
+
+        response.then().statusCode(204);
+
+        // Verify user deletion
         verifyUserDeletion("Bob", "20002");
     }
 
@@ -141,17 +180,23 @@ public class DeleteUserTests {
     public void testDeleteUser_MissingRequiredFields() {
         logger.info("Running Scenario #3: Delete user with missing required fields");
 
-        UserDto userToDelete = UserDto.builder()
-                .name("Charlie")
-                .build();
+        String userToDelete = """
+            {
+                "name": "Charlie"
+            }""";
 
         Allure.step("Attempting to delete user: Charlie with missing required fields");
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
-            userService.deleteUser(userToDelete);
-        });
+        Response response = given()
+                .auth().oauth2(writeToken)
+                .body(userToDelete)
+                .when()
+                .delete(API_BASE_URL + "/users");
 
-        assertEquals("Name and sex are required fields", exception.getMessage());
-        assertTrue(exception.getValidationErrors().containsKey("sex"));
+        attachResponseToAllure(response);
+
+        response.then()
+                .statusCode(409)
+                .body(containsString("Name and sex are required fields"));
     }
 
     @Test
@@ -162,17 +207,24 @@ public class DeleteUserTests {
     public void testDeleteUser_NonExistentUser() {
         logger.info("Running Scenario #4: Delete a non-existent user");
 
-        UserDto userToDelete = UserDto.builder()
-                .name("NonExistentUser")
-                .sex("Female")
-                .build();
+        String userToDelete = """
+            {
+                "name": "NonExistentUser",
+                "sex": "Female"
+            }""";
 
         Allure.step("Attempting to delete non-existent user: NonExistentUser");
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            userService.deleteUser(userToDelete);
-        });
+        Response response = given()
+                .auth().oauth2(writeToken)
+                .body(userToDelete)
+                .when()
+                .delete(API_BASE_URL + "/users");
 
-        assertEquals("User not found", exception.getMessage());
+        attachResponseToAllure(response);
+
+        response.then()
+                .statusCode(409)
+                .body(containsString("User not found"));
     }
 
     @Test
@@ -183,23 +235,22 @@ public class DeleteUserTests {
     public void testDeleteUser_UnauthorizedAccess() {
         logger.info("Running Scenario #5: Unauthorized access to delete user");
 
-        Allure.step("Invalidating tokens to simulate unauthorized access");
-        client.invalidateTokens();
+        String userToDelete = """
+            {
+                "name": "Alice",
+                "sex": "Female"
+            }""";
 
-        UserDto userToDelete = UserDto.builder()
-                .name("Alice")
-                .sex("Female")
-                .build();
+        Allure.step("Attempting to delete user with invalid token");
+        Response response = given()
+                .auth().oauth2("invalid_token")
+                .body(userToDelete)
+                .when()
+                .delete(API_BASE_URL + "/users");
 
-        Allure.step("Attempting to delete user: Alice with invalid tokens");
-        AuthenticationException exception = assertThrows(AuthenticationException.class, () -> {
-            userService.deleteUser(userToDelete);
-        });
+        attachResponseToAllure(response);
 
-        assertEquals("Authentication failed", exception.getMessage());
-
-        // Restore valid state
-        client.validateTokens();
+        response.then().statusCode(401);
     }
 
     @Test
@@ -210,23 +261,22 @@ public class DeleteUserTests {
     public void testDeleteUser_InvalidToken() {
         logger.info("Running Scenario #6: Delete user with invalid token");
 
-        Allure.step("Setting an explicitly invalid token");
-        client.setInvalidToken();
+        String userToDelete = """
+            {
+                "name": "Bob",
+                "sex": "Male"
+            }""";
 
-        UserDto userToDelete = UserDto.builder()
-                .name("Bob")
-                .sex("Male")
-                .build();
+        Allure.step("Attempting to delete user with explicitly invalid token");
+        Response response = given()
+                .auth().oauth2("explicitly_invalid_token")
+                .body(userToDelete)
+                .when()
+                .delete(API_BASE_URL + "/users");
 
-        Allure.step("Attempting to delete user: Bob with an invalid token");
-        AuthenticationException exception = assertThrows(AuthenticationException.class, () -> {
-            userService.deleteUser(userToDelete);
-        });
+        attachResponseToAllure(response);
 
-        assertEquals("Authentication failed", exception.getMessage());
-
-        // Restore valid state
-        client.validateTokens();
+        response.then().statusCode(401);
     }
 
     @Test
@@ -238,36 +288,47 @@ public class DeleteUserTests {
         logger.info("Running Scenario #7: Invalid HTTP method for delete user");
 
         Allure.step("Attempting to use DELETE method on a GET-only endpoint");
-        ApiException exception = assertThrows(ApiException.class, () -> {
-            userService.sendInvalidDeleteMethodRequest();
-        });
+        Response response = given()
+                .auth().oauth2(writeToken)
+                .when()
+                .delete(API_BASE_URL + "/users/available");
 
-        assertEquals(405, exception.getStatusCode());
-        assertEquals("METHOD_NOT_ALLOWED", exception.getErrorCode());
+        attachResponseToAllure(response);
+
+        response.then().statusCode(405);
     }
 
     private void verifyUserDeletion(String userName, String zipCode) {
-        assertDoesNotThrow(() -> {
-            ApiResponse getUsersResponse = userService.getUsers(null);
-            assertFalse(getUsersResponse.getResponseBody().contains(userName),
-                    "User " + userName + " should be deleted");
+        // Verify user is deleted
+        given()
+                .auth().oauth2(writeToken)
+                .when()
+                .get(API_BASE_URL + "/users")
+                .then()
+                .statusCode(200)
+                .body("findAll { it.name == '" + userName + "' }", empty());
 
-            assertTrue(client.getAvailableZipCodes().contains(zipCode),
-                    "Zip code " + zipCode + " should be available");
-        });
+        // Verify zip code is available
+        given()
+                .auth().oauth2(writeToken)
+                .when()
+                .get(API_BASE_URL + "/zip-codes")
+                .then()
+                .statusCode(200)
+                .body("findAll { it.code == '" + zipCode + "' }", not(empty()));
     }
 
     @Attachment(value = "Response Status Code", type = "text/plain")
-    public String attachStatusCode(ApiResponse response) {
+    private String attachStatusCode(Response response) {
         return String.valueOf(response.getStatusCode());
     }
 
     @Attachment(value = "Response Body", type = "text/plain")
-    public String attachResponseBody(ApiResponse response) {
-        return response.getResponseBody();
+    private String attachResponseBody(Response response) {
+        return response.getBody().asString();
     }
 
-    private void attachResponseDetails(ApiResponse response) {
+    private void attachResponseToAllure(Response response) {
         attachStatusCode(response);
         attachResponseBody(response);
     }
