@@ -308,7 +308,7 @@ public class GetUsersTests {
         // Start Allure step
         Allure.step("Sending unauthorized GET request to retrieve users");
 
-        ApiResponse response = userService.getUsers(null);
+            ApiResponse response = userService.getUsers(null);
 
         // Attach response details to Allure report
         attachResponseDetails(response);

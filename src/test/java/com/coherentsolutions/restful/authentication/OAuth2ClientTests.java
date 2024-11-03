@@ -1,6 +1,7 @@
 package com.coherentsolutions.restful.authentication;
 
 import com.coherentsolutions.restful.auth.OAuth2Client;
+import com.coherentsolutions.restful.exception.AuthenticationException;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
@@ -20,13 +21,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OAuth2ClientTests {
 
     private static final Logger logger = LoggerFactory.getLogger(OAuth2ClientTests.class);
-
     private OAuth2Client client;
 
     @BeforeEach
     @Step("Setup: Initializing OAuth2Client instance")
     void setUp() throws IOException {
         client = OAuth2Client.getInstance();
+        client.validateTokens(); // Ensure tokens are in a valid state before each test
         logger.info("OAuth2Client instance initialized");
         attachCustomMessage("OAuth2Client instance initialized");
     }
@@ -65,6 +66,65 @@ public class OAuth2ClientTests {
         assertNotNull(token, "Token should not be null");
         assertFalse(token.isEmpty(), "Token should not be empty");
         assertTrue(token.length() > 0, "Token length should be greater than 0");
+    }
+
+    @Test
+    @Order(3)
+    @Story("Invalid Token Handling")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Ensure that the client properly handles invalid tokens.")
+    public void testInvalidToken() {
+        logger.info("Running Scenario #3: Invalid Token Handling");
+
+        Allure.step("Setting invalid token");
+        client.setInvalidToken();
+
+        Allure.step("Attempting to use invalid read token");
+                                                                                                                                                                                                                                                                                                                            assertThrows(AuthenticationException.class, () -> {
+            String token = client.getReadToken();
+            attachToken("Invalid Read Token", token);
+        }, "Should throw AuthenticationException for invalid read token");
+
+        Allure.step("Attempting to use invalid write token");
+        assertThrows(AuthenticationException.class, () -> {
+            String token = client.getWriteToken();
+            attachToken("Invalid Write Token", token);
+        }, "Should throw AuthenticationException for invalid write token");
+    }
+
+    @Test
+    @Order(4)
+    @Story("Token Invalidation")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Ensure that token invalidation works correctly.")
+    public void testTokenInvalidation() {
+        logger.info("Running Scenario #4: Token Invalidation");
+
+        Allure.step("Invalidating tokens");
+        client.invalidateTokens();
+
+        Allure.step("Attempting to use invalidated read token");
+        assertThrows(AuthenticationException.class, () -> {
+            String token = client.getReadToken();
+            attachToken("Invalidated Read Token", token);
+        }, "Should throw AuthenticationException for invalidated read token");
+
+        Allure.step("Attempting to use invalidated write token");
+        assertThrows(AuthenticationException.class, () -> {
+            String token = client.getWriteToken();
+            attachToken("Invalidated Write Token", token);
+        }, "Should throw AuthenticationException for invalidated write token");
+
+        Allure.step("Validating tokens");
+        client.validateTokens();
+
+        Allure.step("Verifying tokens work after revalidation");
+        assertDoesNotThrow(() -> {
+            String readToken = client.getReadToken();
+            String writeToken = client.getWriteToken();
+            assertNotNull(readToken, "Read token should be valid after revalidation");
+            assertNotNull(writeToken, "Write token should be valid after revalidation");
+        });
     }
 
     /**
